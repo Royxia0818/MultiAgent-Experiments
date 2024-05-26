@@ -1,6 +1,5 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-import random
 
 # 展示网络图
 def plot_network(G, activated_nodes, title):

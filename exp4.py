@@ -1,3 +1,4 @@
+# 实验6.1
 import pygame
 import random
 import math
