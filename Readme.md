@@ -190,3 +190,234 @@ plot_network(G, title="无标度网络模型")
 
 5.2 实现线性阈值模型构建，并给出实例演示。
 
+## 实验过程
+
+线性阈值模型是一种描述社会影响和传播动态的模型，其中个体在受到足够多邻居的影响后会改变状态，从而触发连锁反应。
+
+我们首先使用networkx.DiGraph函数创建一个单向图：
+
+```python
+G = nx.DiGraph()
+```
+
+接下来，在该单向图中添加每一个节点的权重和边的权重：
+
+```python
+# 添加节点
+    nodes = [(1, {'weight': 0.6}), (2, {'weight': 0.5}), (3, {'weight': 0.7}), (4, {'weight': 0.9})]
+    G.add_nodes_from(nodes)
+    # 添加有向边并赋值属性
+    edges = [(1, 2, {'weight': 0.5}),
+             (1, 3, {'weight': 0.5}),
+             (2, 3, {'weight': 0.5}),
+             (3, 2, {'weight': 0.5}),
+             (2, 4, {'weight': 0.5}),
+             (3, 4, {'weight': 0.5}),
+            ]
+```
+
+打印初始网络状态，其中红色代表的是已经被激活的节点。
+
+![初始状态](figure/初始状态.png)
+
+在传播的过程中，每一轮将遍历每一个未被激活的节点，查看其相邻节点内是否有已被激活的节点。当节点受到邻居的激活权重总和大于等于其激活阈值时，该节点被激活。持续更新直至一轮中没有新被激活的节点。传播过程实现代码如下：
+
+```python
+def linear_threshold_model(G, start):
+    # Activated nodes
+    activated = set(start)
+    newly_activated = set(start)
+    activation_history = [set(start)]
+    node_labels = {node: data for node, data in G.nodes(data=True)}
+    edge_labels = {(u, v): f"{data['weight']}" for u, v, data in G.edges(data=True)}
+    i = 0
+    while newly_activated:
+        current_activated = set()
+        for node in G.nodes():
+            if node not in activated:
+                s = 0
+                for neighbor in G.nodes():
+                    if node in G.neighbors(neighbor) and neighbor in activated:
+                        s += G[neighbor][node]['weight']
+                if s >= node_labels[node]['weight']:
+                    current_activated.add(node)
+        
+        newly_activated = current_activated
+        if newly_activated:
+            activated.update(newly_activated)
+            activation_history.append(newly_activated)
+            i += 1
+            plot_network(G, activated, f"第{i}次传播")
+    return activation_history
+```
+
+
+在该实验中，我们的传播总共进行了3轮。第一次传播中，a2节点被激活：
+
+![第一次传播](figure/第1次传播.png)
+
+第二次传播中，a3节点被激活：
+
+![第二次传播](figure/第2次传播.png)
+
+第三次传播中，a4节点被激活：
+
+![第三次传播](figure/第3次传播.png)
+
+# 实验四
+
+## 实验要求
+
+6.1 实现Boids模型，并给出实例演示。
+
+## 实验过程
+
+Boids模型是一种用于模拟群体行为的计算模型，由克雷格·雷诺兹（Craig Reynolds）在1986年提出。该模型通过简单的规则模拟出鸟群、鱼群等群体的复杂行为。Boids模型中的每个个体决策都遵循三个基本规则：避免碰撞、方向统一和群体聚合。
+
+我们将使用三角形来表示物体的位置和方向。三角形的形状定义如下：
+
+![](figure/triangle.drawio.png)
+
+可以计算得到三角形的三个顶点坐标如下：
+
+$$x1 = x+2\cos{\theta}\quad y1=y+2\sin{\theta}$$
+$$x2 = x+0.5\sin{\theta}\quad y2 = y-0.5\cos{\theta}$$
+$$x3 = x-0.5\sin{\theta}\quad y3=y+\cos{\theta}$$
+
+首先我们创建Boid类来代表一个个体。
+
+```python
+class Boid:
+    def __init__(self):
+        self.size = 4
+        self.x = random.randint(0, WIDTH)
+        self.y = random.randint(0, HEIGHT)
+        self.angle = random.uniform(0, math.pi * 2)
+        self.speed = 3
+        self.point_list = [(self.x+self.size*2*math.cos(self.angle), self.y+self.size*2*math.sin(self.angle)), (self.x+self.size*0.5*math.sin(self.angle), self.y-self.size*0.5*math.cos(self.angle)), (self.x-self.size*0.5*math.sin(self.angle), self.y+self.size*0.5*math.cos(self.angle)) ]
+
+    # 更新位置
+    def update(self, flock):
+        self.rule3(flock)
+        self.rule1(flock)
+        self.rule2(flock)
+        self.move()
+```
+
+类鸟检测某个范围内（与分离规则的范围不同）的所有类鸟的位置，计算出质心，然后产生一个指向质心的速度。我们设置群聚的检测范围为40。群聚行为的实现如下：
+
+```python
+    def rule1(self, flock):
+        alpha = 0.9
+        gathering = 40
+        move_x, move_y = 0, 0
+        l = 0
+        for boid in flock:
+            if boid != self:
+                dist = math.sqrt((self.x - boid.x)**2 + (self.y - boid.y)**2)
+                if dist < gathering:
+                    l+=1
+                    move_x += (gathering-dist)*(boid.x - self.x)/gathering
+                    move_y += (gathering-dist)*(boid.y - self.y)/gathering
+        if l!=0:
+            self.angle = alpha * self.angle + (1-alpha)*math.atan2(move_y, move_x)
+```
+
+类鸟检测某个范围内的所有类鸟的速度，计算出平均速度，然后产生一个与平均速度方向一致的速度。我们设置方向统一的检测范围为40。方向统一的实现如下：
+
+```python
+    def rule3(self, flock):
+        alpha = 0.9
+        average= 40
+        move_angle = 0
+        l = 0
+        for boid in flock:
+            if boid != self:
+                dist = math.sqrt((self.x - boid.x)**2 + (self.y - boid.y)**2)
+                if dist < average:
+                    move_angle += boid.angle
+                    l += 1
+        if l == 0:
+            pass
+        else:
+            move_angle /=l
+            self.angle = alpha * self.angle + (1-alpha)*move_angle
+```
+
+类鸟检测某个范围内的所有类鸟的位置，计算出质心，然后产生一个远离质心的速度。我们设置避免碰撞的检测范围为10，而相对地，避免碰撞对结果的影响更大。避免碰撞的实现如下：
+
+```python
+    def rule2(self, flock):
+        alpha = 0.8
+        separation= 10
+        move_x, move_y = 0, 0
+        l = 0
+        for boid in flock:
+            if boid != self:
+                dist = math.sqrt((self.x - boid.x)**2 + (self.y - boid.y)**2)
+                if dist < separation:
+                    l += 1
+                    move_x += (separation-dist)*(boid.x - self.x)/separation
+                    move_y += (separation-dist)*(boid.y - self.y)/separation
+        if l != 0:
+            self.angle = (alpha * self.angle - (1-alpha)*(math.atan2(move_y, move_x)+0.5*math.pi))
+
+```
+
+可以注意到的是，我们的三个规则实现并不是简单地计算方向，而是考虑到了类鸟原有的方向惯性，将规则计算得到的方向以加权平均的方式对类鸟的方向做修正。在运行一段时间后，我们可以看到这样的群集运动：
+
+![Boids模型](figure/Boids模型.png)
+
+# 实验五
+
+## 实验要求
+
+实现一种传染病模型，并给出实例演示。
+
+## 实验过程
+
+在SIRS模型中，人群被分为三类：易感者 (S)，感染者 (I)，以及康复者 (R)。同时，康复者也可以重新变为易感者。模型的演化由一组微分方程描述：
+
+$$\frac{dS}{dt}=-\beta\frac{SI}{N}+\gamma R$$
+$$\frac{dI}{dt} = \beta\frac{SI}{N}-\alpha I $$
+$$\frac{dR}{dt} = \alpha I -\gamma R $$
+
+我们定义模型参数和初始状态如下：
+
+```python
+# 定义模型参数
+N = 1000   # 总人口数量
+alpha = 0.1 # 康复率
+beta = 0.3 # 传播率
+gamma = 0.05 # 再感染率
+
+# 初始状态：假设只有一个感染者，其他人都是易感者
+I0 = 1
+S0 = N - I0
+R0 = 0
+```
+
+创建函数求解某一时刻的S，I，R的微分：
+
+```python
+def sirs_model(y, t, beta, alpha, gamma, N):
+    S, I, R = y
+    dSdt = -beta * S * I / N + gamma * R
+    dIdt = beta * S * I / N - alpha * I
+    dRdt = alpha * I - gamma * R
+    return [dSdt, dIdt, dRdt]
+```
+
+借助python自带的常微分方程求解方法：
+
+```python
+solution = odeint(sirs_model, [S0, I0, R0], t, args=(beta, alpha, gamma, N))
+S, I, R = solution.T
+```
+
+得到传播过程个类型的人群数量变化如下：
+
+![SIRS](figure/SIRS模型演化.png)
+
+最终，S类型人数为333人，I类型人数为222人，R类型人群为444人。
+
