@@ -1,32 +1,31 @@
-# 实验选题2.1-2.3
-import networkx as nx
-import matplotlib.pyplot as plt
+def greedy_resource_allocation(agents, resources):
+    # 按照每个任务所需资源从小到大排序
+    agents.sort(key=lambda x: x[2]/x[1])
+    work = 0
+    allocated_tasks = []
+    for agent in agents:
+        task_id, required_resource, job_done = agent
+        if resources >= required_resource:
+            allocated_tasks.append(agent)
+            resources -= required_resource
+            work += job_done
 
+    return allocated_tasks, resources, work
 
-def plot_network(G, title):
-    pos = nx.spring_layout(G)
-    plt.figure(figsize=(6, 6))
-    nx.draw(G, pos, with_labels=True, node_color='skyblue', node_size=700, edge_color='gray') 
-    manager = plt.get_current_fig_manager()
-    manager.window.wm_title(title)
-    plt.show()
+# 示例任务和资源
+agents = [
+    (1, 2, 6),  # agent1需要2个资源，能完成6份工作
+    (2, 1, 2),  # agent2需要1个资源，能完成2份工作
+    (3, 4, 9),  # agent3需要4个资源，能完成9份工作
+    (4, 3, 7),  # agent4需要3个资源，能完成7份工作
+    (5, 2, 5)   # agent5需要2个资源，能完成5份工作
+]
+total_resources = 9  # 总资源数量
 
+# 调用贪心资源分配函数
+allocated_agents, remaining_resources, work = greedy_resource_allocation(agents, total_resources)
 
-if __name__ == "__main__":
-    print("WS小世界模型")
-    G = nx.watts_strogatz_graph(20, 4, 0.1) # 创建一个包含20个节点的WS小世界模型
-    print(f"平均路径长度: {nx.average_shortest_path_length(G)}")
-    print(f"聚类系数: {nx.average_clustering(G)}")
-    plot_network(G, title="WS小世界模型")
-    
-    print("NW小世界模型")
-    G = nx.newman_watts_strogatz_graph(20, 4, 0.1) # 创建一个包含20个节点的NW小世界模型
-    print(f"平均路径长度: {nx.average_shortest_path_length(G)}")
-    print(f"聚类系数: {nx.average_clustering(G)}")
-    plot_network(G, title="NW小世界模型")
-
-    print("无标度网络模型")
-    G = nx.barabasi_albert_graph(20, 2) # 创建一个包含20个节点的无标度世界模型
-    print(f"平均路径长度: {nx.average_shortest_path_length(G)}")
-    print(f"聚类系数: {nx.average_clustering(G)}")
-    plot_network(G, title="无标度网络模型")
+# 打印分配结果
+print("Allocated agents:", allocated_agents)
+print("Remaining resources:", remaining_resources)
+print(f"Work complete: {work}")
